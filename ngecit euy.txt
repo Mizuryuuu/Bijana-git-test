@@ -1,0 +1,378 @@
+#include <stdio.h>
+#include <string.h>
+#include <time.h>
+#include <stdlib.h>
+
+/* start */
+//pendeklarasian variable yang akan digunakan
+int  totalPembayaran = 0, nominalPembayaran = 0,
+kembalian = 0, subTotalTagihan = 0;
+float totalDiskon = 0, tagihan = 0, subTotalDiskon = 0;
+
+typedef struct SettingWaktu
+{
+    char tanggalLengkap[69];
+    char waktuLengkap[10];
+    int Jam;
+    int Menit;
+    int Detik;
+} dataWaktu;
+
+typedef struct DataProduct
+{
+    char namaProduk[20];
+    int hargaProduk;
+    int IdData;
+} Product;
+
+typedef struct dataStorageProduct
+{
+    int IdData;
+    char namaProduk[20];
+    int harga;
+    int jumlahData;
+    float Diskon;
+} StorageData;
+//end
+
+
+/* start */
+//pendeklarasian fungsi yang digunakan
+
+// start pengelolaan data
+void calculateDiscount(StorageData *data, int length);
+int dataManage(Product *produk, StorageData *data, int length, int pilihan);
+void summaryPurchase(Product *produk, StorageData *data, int length, dataWaktu *rec);
+void resetData(StorageData *data, int length);
+void bubleSort(StorageData *data, int length);
+// end
+
+// start tampilan
+void tampilanUtama(Product *data, int lenght);
+void printStruct(Product *produk, StorageData *data, int length, dataWaktu *rec);
+void simpanWaktu(dataWaktu *rec);
+char *MakeIdStruk(dataWaktu *rec);
+//end
+
+
+/* start */
+// fungsi utama program yang dijalankan
+int main()
+{
+
+    int pilihan; // deklarasi variable lokal untuk fungsi main
+
+    // data waktu tersimpan
+    dataWaktu waktu;
+    // data produk yang ada
+    Product produk[5] =
+    {
+      {"Buku Tulis", 5000, 1},
+      {"Pensil", 1000, 2},
+      {"Pulpen", 3000, 3},
+      {"Penghapus", 500, 4},
+      {"Penggaris", 2000, 5}
+    };
+
+    // Tempat data tersimpan
+    StorageData data[5] =
+    {
+        {0, "", 0, 0, 0},
+        {0, "", 0, 0, 0},
+        {0, "", 0, 0, 0},
+        {0, "", 0, 0, 0},
+        {0, "", 0, 0, 0}
+    };
+
+    do
+    {
+
+
+        int length = sizeof(produk)/sizeof(produk[0]); // panjang dari data produk
+
+            pilihan = dataManage(produk, data, length, pilihan);
+            system("cls");
+            if(pilihan == 99)
+            {
+                summaryPurchase(produk, data, length, &waktu);
+                system("cls");
+            } else if(pilihan == 55)
+            {
+                system("cls");
+                resetData(data, length);
+            }
+
+
+    }while (pilihan != 0);
+
+    return 0;
+
+
+}
+// end
+
+
+/* start */
+// pendefinisian fungsi yang digunakan
+
+// start pengelolaan data
+void calculateDiscount(StorageData *data, int length)
+{
+    for(int i = 0; i < length; i++)
+    {
+        if(data[i].jumlahData >= 5)
+        {
+            data[i].Diskon = 0.15f;
+        } else if(data[i].jumlahData >= 3)
+        {
+            data[i].Diskon = 0.1f;
+        } else
+        {
+            data[i].Diskon = 0;
+        }
+    }
+}
+
+int dataManage(Product *produk, StorageData *data, int length, int pilihan)
+{
+    int jumlahBeli;
+    tampilanUtama(produk, length);
+    printf("Masukan Pilihan Anda (1/2/3/4/5) atau (99/55/00) : ");
+    if(scanf("%d", &pilihan) != 1)
+    {
+        while(getchar() != '\n');
+        pilihan = 7;
+    }
+
+    if(pilihan < 6 && pilihan != 99)
+    {
+        printf("------------------------------------------------------\n");
+        printf("Masukan jumlah %s yang ingin dibeli : ", produk[pilihan-1].namaProduk);
+        if(scanf("%d", &jumlahBeli) != 1)
+        {
+            while(getchar() != '\n');
+            jumlahBeli = 0;
+        }
+
+        for (int i = 0; i < length; i++)
+        {
+            if (produk[i].IdData == pilihan)
+            {
+
+                // Jika produk sudah ada dalam data pembelian, tambahkan jumlah pembelian
+                if (data[i].jumlahData != 0 && data[i].IdData == produk[i].IdData)
+                {
+                    data[i].jumlahData += jumlahBeli;
+                    break; // Keluar dari loop setelah menambahkan jumlah pembelian
+                }
+                // Jika produk belum ada dalam data pembelian, tambahkan data baru
+                else if (data[i].IdData != produk[i].IdData && data[i].jumlahData == 0)
+                {
+                    data[i].IdData = produk[i].IdData;
+                    strcpy(data[i].namaProduk, produk[i].namaProduk);
+                    data[i].harga = produk[i].hargaProduk;
+                    data[i].jumlahData = jumlahBeli;
+                    break; // Keluar dari loop setelah menambahkan data baru
+                }
+                else if(data[i].jumlahData != 0)
+                {
+                    for (int j = 0; j < length; j++)
+                    {
+                        if(data[j].IdData == produk[i].IdData)
+                        {
+                            data[j].jumlahData += jumlahBeli;
+                            break; // Keluar dari loop setelah menambahkan jumlah pembelian
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return pilihan;
+}
+
+void summaryPurchase(Product *produk, StorageData *data, int length, dataWaktu *rec)
+{
+    calculateDiscount(data, length);
+    bubleSort(data, length);
+    int loop = 0;
+    char beliLagi[2];
+
+    printf("==============================================================\n");
+    printf("                Rekapan Data Pembelian\n");
+    printf("==============================================================\n");
+    printf("|No.| Jumlah | Nama Barang |  Harga  | Total Harga | Diskon  |\n");
+    printf("==============================================================\n");
+    for(int i = 0; i < length; i++)
+    {
+        if(data[i].jumlahData != 0)
+        {
+            subTotalTagihan = data[i].harga * data[i].jumlahData;
+            subTotalDiskon =  subTotalTagihan * data[i].Diskon;
+            totalPembayaran += subTotalTagihan;
+            totalDiskon += subTotalDiskon;
+            printf("|%-*d|%-*d|%-*s|Rp %-*d|Rp %-*d|Rp %-*.0f|, id data = %d\n", 3, i+1, 8, data[i].jumlahData, 13, data[i].namaProduk, 6, data[i].harga, 10, subTotalTagihan, 6, subTotalDiskon, data[i].IdData);
+        }
+    }
+    tagihan = totalPembayaran - totalDiskon;
+    printf("|=============================================================\n\n");
+    printf("Total Harga \t: Rp. %d \n", totalPembayaran);
+    printf("Total Diskon \t: Rp. %.0f \n", totalDiskon);
+    printf("Total Tagihan \t: Rp. %.0f \n", tagihan);
+    printf("\n==============================================================\n");
+
+    char jawaban;
+    printf("Apakah ada tambahan (y/n) : ");
+    getchar();
+    scanf("%c", &jawaban);
+    if(jawaban != 'y' && jawaban != 'Y')
+    {
+        do
+        {
+            printf("Masukan Nominal Pembayaran : ");
+            scanf("%d", &nominalPembayaran);
+            if(nominalPembayaran < tagihan)
+            {
+                printf("Nominal yang anda kurang \n");
+                printf("Silahkan Inputkan Ulang \n\n");
+            } else
+            {
+                kembalian = nominalPembayaran - tagihan;
+                loop = 1;
+            }
+
+        } while(loop == 0);
+        printf("Kembalian anda \t: %d\n", kembalian);
+        printf("\n==============================================================\n");
+        printf("Klik apapun untuk print struk : ");
+        getchar();
+        getchar();
+        printStruct(produk, data, length, rec);
+    } else
+    {
+        totalDiskon = 0;
+        totalPembayaran = 0;
+    }
+
+}
+
+void resetData(StorageData *data, int length)
+{
+    for(int i = 0; i < length; i++)
+    {
+        data[i].Diskon = 0;
+        data[i].jumlahData = 0;
+    }
+    totalPembayaran = 0;
+    totalDiskon = 0;
+    nominalPembayaran = 0;
+    kembalian = 0;
+    subTotalTagihan = 0;
+    subTotalDiskon = 0;
+}
+
+void bubleSort(StorageData *data, int length)
+{
+    for(int i = 0; i < length - 1; ++i)
+    {
+        for(int j = i + 1; j < length; ++j)
+        {
+            if(data[i].jumlahData < data[j].jumlahData)
+            {
+                StorageData temp = data[i];
+                data[i] = data[j];
+                data[j] = temp;
+            }
+        }
+    }
+}
+
+// start tampilan fungsi
+void printStruct(Product *produk, StorageData *data, int length, dataWaktu *rec)
+{
+    char fileName[69];
+    FILE *file;
+    simpanWaktu(rec);
+    char percent = '%';
+    sprintf(fileName, "C:/Users/inyom/OneDrive/Documents/LatihanUKKK/PersiapanUK/cetak/%s.txt", MakeIdStruk(rec));
+    file = fopen(fileName,"w");
+    fprintf(file, "=============================================\n");
+    fprintf(file, "|          Toko SerbaSerbi Skensa           |\n");
+    fprintf(file, "|   Jln. HOS Cokroaminoto No.84 Denpasar    |\n");
+    fprintf(file, "|                   Bali                    |\n");
+    fprintf(file, "|                                           |\n");
+    fprintf(file, "|Id Struk        : %-*s|\n", 25, MakeIdStruk(rec));
+    fprintf(file, "|===========================================|\n");
+    fprintf(file, "|                                           |\n");
+    for(int i = 0; i < length; i++)
+    {
+        subTotalTagihan = data[i].harga * data[i].jumlahData;
+        subTotalDiskon =  subTotalTagihan * data[i].Diskon;
+        if(data[i].jumlahData != 0)
+        {
+            fprintf(file, "| %-*s %*dpcs Rp %-*d = Rp %-*d|\n", 10, data[i].namaProduk, 3, data[i].jumlahData, 5, data[i].harga, 10, subTotalTagihan);
+            fprintf(file, "|                       %*.0f%c  = Rp %-*d|\n", 2, data[i].Diskon*100, percent, 10, subTotalDiskon);
+            fprintf(file, "|                            = Rp %-*d|\n", 10, subTotalTagihan - subTotalDiskon);
+            fprintf(file, "|                                           |\n");
+        }
+    }
+    fprintf(file, "|===========================================|\n");
+    fprintf(file, "|                                           |\n");
+    fprintf(file, "| Total Harga        : Rp %-*d|\n", 18, totalPembayaran);
+    fprintf(file, "| Total Diskon       : Rp %-*.0f|\n", 18, totalDiskon);
+    fprintf(file, "| Total pembayaran   : Rp %-*.0f|\n", 18, tagihan);
+    fprintf(file, "| Nominal pembayaran : Rp %-*d|\n", 18, nominalPembayaran);
+    fprintf(file, "| Kembalian          : Rp %-*d|\n", 18, kembalian);
+    fprintf(file, "|                                           |\n");
+    fprintf(file, "| Waktu              : %-*s|\n", 18, rec->waktuLengkap);
+    fprintf(file, "=============================================\n");
+    fclose(file);
+}
+
+void tampilanUtama(Product *data, int lenght)
+{
+    printf("=============================================\n");
+    printf("              Selamat Datang                 \n");
+    printf("              Di Toko Skensa                 \n");
+    printf("=============================================\n\n");
+    printf("        =============================\n");
+    printf("        |NO.| Nama Barang |  Harga  |\n");
+    printf("        =============================\n");
+    for(int i = 0; i < lenght; i++)
+    {
+        printf("        |%-*d|%-*s|Rp. %-*d|\n", 3, i+1,13, data[i].namaProduk, 5, data[i].hargaProduk);
+    }
+    printf("        =============================\n\n");
+    printf("=============================================\n\n");
+    printf("99. Rekap Pembelian\n");
+    printf("55. Reset Pembelian\n");
+    printf("00. Keluar\n\n");
+    printf("=============================================\n");
+
+}
+
+void simpanWaktu(dataWaktu *rec)
+{
+    time_t current_date;
+    struct tm *locale_date;
+    time(&current_date);
+    locale_date = localtime(&current_date);
+
+    rec->Jam = locale_date->tm_hour;
+    rec->Menit = locale_date->tm_min;
+    rec->Detik = locale_date->tm_sec;
+    strftime(rec->tanggalLengkap, 69, "%A, %d %b %Y", locale_date);
+    strftime(rec->waktuLengkap, 10, "%H:%M %p", locale_date);
+}
+
+char *MakeIdStruk(dataWaktu *rec)
+{
+    char *gabung = malloc(69 * sizeof(char));
+    srand(time(0));
+    int angkaAcak = rand() % 101;
+
+    sprintf(gabung, "%d%02d%02d%02d", angkaAcak, rec->Jam, rec->Menit, rec->Detik);
+    return gabung;
+}
+
+//end pendefinisian fungsi
